@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>데일리 뉴스 브리핑 v2.1R1 · Recall + 안정화</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .skeleton{position:relative;overflow:hidden;background:#e5e7eb}
+    .skeleton::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
+      background:linear-gradient(90deg,rgba(229,231,235,0) 0,rgba(255,255,255,.7) 50%,rgba(229,231,235,0) 100%);
+      animation:shimmer 1.2s infinite}
+    @keyframes shimmer{100%{transform:translateX(100%)}}
+    .badge{font-size:.65rem;padding:.2rem .5rem;border-radius:9999px;border:1px solid rgba(0,0,0,.08)}
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="max-w-7xl mx-auto p-4 sm:p-8">
+    <!-- 메인 배너 (이미지 src 교체) -->
+    <a href="https://omnicare.biz/main/index.php?utm_source=omnicare&utm_medium=news&utm_campaign=daily" target="_blank" rel="noopener"
+       class="relative block group rounded-2xl overflow-hidden border border-gray-200 shadow-sm mb-6"
+       aria-label="비타브릿지 건강검진 예약 바로가기">
+      <img src="https://postfiles.pstatic.net/MjAyNTA5MDVfMjU2/MDAxNzU3MDM1MzI5ODQ1.uqf71crOiDQYlLsoFGuIKzlASSUil46DsxNDebXlBcYg.wBc6WmhjLSfYDp6xPIF5sznkh50XOkMy-xq0k9GMTV8g.PNG/%EC%98%B4%EB%8B%88%EC%BC%80%EC%96%B4_%EB%A1%9C%EA%B3%A0.png?type=w966" alt="건강검진 예약은 비타브릿지"
+           class="w-full h-40 sm:h-56 md:h-64 object-cover transition-transform duration-300 group-hover:scale-[1.01]" />
+      <div class="pointer-events-none absolute inset-0 flex items-end">
+        <div class="m-4 px-3 py-1.5 rounded-full bg-white/90 text-gray-900 text-xs font-medium shadow">건강검진 예약은 비타브릿지</div>
+      </div>
+    </a>
+
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">데일리 뉴스 브리핑 <span class="text-xs align-super text-indigo-600">v2.1R1</span></h1>
+        <p class="text-sm text-gray-500">헬스케어 + 사회·경제·기술·글로벌 이슈. (Recall 우선 · KST 롤링 윈도우)</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <input id="dateInput" type="date" class="px-3 py-2 rounded-xl border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <input id="keywordInput" type="text" placeholder="검색 키워드 (예: 거래처/제품/인물)" class="px-3 py-2 rounded-xl border border-gray-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-44 sm:w-64" />
+        <div class="flex items-center gap-2 text-sm">
+          <label class="inline-flex items-center gap-1"><input id="toggleBusiness" type="checkbox" class="rounded" checked> 사업체</label>
+          <label class="inline-flex items-center gap-1"><input id="toggleGov" type="checkbox" class="rounded" checked> 국가기관</label>
+          <label class="inline-flex items-center gap-1"><input id="applyKeywordTop" type="checkbox" class="rounded"> Top Stories에 키워드 적용</label>
+          <label class="inline-flex items-center gap-1"><input id="applyKeywordGov" type="checkbox" class="rounded" checked> 기관에 키워드 적용</label>
+        </div>
+        <button id="fetchBtn" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 active:bg-indigo-800">브리핑 불러오기</button>
+        <button id="exportBtn" class="px-4 py-2 rounded-xl bg-gray-800 text-white text-sm font-medium hover:bg-gray-900">Markdown 내보내기</button>
+      </div>
+    </header>
+
+    <section id="meta" class="mt-4 text-sm text-gray-600"></section>
+    <main id="results" class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6"></main>
+
+    <aside class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs text-gray-500">
+      <div class="p-4 bg-white border rounded-2xl">
+        <div class="font-semibold mb-1">버전 노트 (v2.1R1)</div>
+        <ul class="list-disc ml-4 space-y-1">
+          <li>항상 보이는 <b>기본 카테고리 카드</b> 구조(데이터 0건이어도 표시)</li>
+          <li>v2.1 Recall 방식 유지 + <b>description 포함 키워드 매칭</b></li>
+          <li>속도 유지: <b>캐시(5분)</b> · <b>타임아웃</b> · <b>프록시 폴백</b> · <b>병렬 처리</b></li>
+          <li>롤링 윈도우 정확화: 전일 15:00 ~ 당일 14:59 (KST)</li>
+        </ul>
+      </div>
+      <div class="p-4 bg-white border rounded-2xl"><div class="font-semibold mb-1">데이터 소스</div><p>Google News RSS(ko, en-US, en-GB), Google Top stories, WHO/FDA/EMA/CDC/ACOG/SMFM, 국내: 법제처·보건복지부·식약처·질병관리청.</p></div>
+      <div class="p-4 bg-white border rounded-2xl"><div class="font-semibold mb-1">Tip</div><p>기관 RSS 주소가 바뀌면 코드 상단 <code>officialFeedsKR</code>/<code>officialFeedsGlobal</code>에서 업데이트하세요.</p></div>
+    </aside>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const CONFIG = {
+      maxPerCategory: 4,
+      languageKO: 'ko', countryKO: 'KR',
+      languageEN: 'en', countryUS: 'US', countryGB: 'GB',
+      useTopStories: true, useOfficials: true,
+      globalQueries: [
+        'acetaminophen OR paracetamol OR Tylenol OR autism OR ASD OR pregnancy OR Trump',
+        'AI health OR medical AI OR digital therapeutics OR wearable health',
+        'vaccine safety OR adverse events OR FDA warning OR EMA safety'
+      ],
+      officialFeedsGlobal: [
+        { name: 'WHO News', url: 'https://www.who.int/feeds/entity/mediacentre/news/en/rss.xml' },
+        { name: 'FDA Press', url: 'https://www.fda.gov/about-fda/contact-fda/press-announcements?rss=1' },
+        { name: 'EMA News', url: 'https://www.ema.europa.eu/en/news_events/news?output=rss' },
+        { name: 'CDC Newsroom', url: 'https://tools.cdc.gov/api/v2/resources/media/403372.rss' },
+        { name: 'ACOG News', url: 'https://www.acog.org/News/news-articles?rss=1' },
+        { name: 'SMFM Statements', url: 'https://www.smfm.org/rss' }
+      ],
+      officialFeedsKR: [
+        { name: '법제처 보도자료', url: 'https://www.moleg.go.kr/news/rss' },
+        { name: '보건복지부 보도자료', url: 'https://www.mohw.go.kr/rss/press.xml' },
+        { name: '식약처 보도자료', url: 'https://www.mfds.go.kr/brd/m_99/rss.do' },
+        { name: '질병관리청 보도자료', url: 'https://www.kdca.go.kr/board/rss/boardRss.es?bid=0015' }
+      ],
+      categories: [
+        { id: 'healthcare', title: '1) 헬스케어·의료 산업',
+          queriesKO: ['원격의료 OR 디지털 치료제 OR DTx','보건의료 정책 OR 건강보험 OR 급여화','제약바이오 FDA OR 임상 승인 OR 허가'],
+          queriesEN: ['telemedicine OR digital therapeutics OR DTx','health policy OR reimbursement OR payer','biotech FDA approval OR clinical trial OR authorization'] },
+        { id: 'economy', title: '2) 경제·경영 트렌드',
+          queriesKO: ['기준금리 OR 금리 동결 OR 인하 OR 인상','환율 OR 외환시장 OR 수출입','M&A OR 스타트업 투자 OR 벤처캐피털'],
+          queriesEN: ['interest rate OR central bank decision','FX market OR exchange rate','M&A OR venture capital OR startup funding'] },
+        { id: 'society', title: '3) 사회·문화 이슈',
+          queriesKO: ['고령화 OR 1인 가구 OR 저출산','웰빙 OR 다이어트 트렌드 OR 피트니스','MZ세대 건강 OR 디지털 헬스 소비'],
+          queriesEN: ['ageing population OR low birth rate','wellness trend OR fitness culture','consumer health app adoption'] },
+        { id: 'tech', title: '4) 기술·디지털 트렌드',
+          queriesKO: ['생성형 AI OR AI 도입 효과 OR 자동화','의료 데이터 보안 OR 개인정보보호 OR GDPR','웨어러블 OR 애플워치 OR 디지털 헬스'],
+          queriesEN: ['generative AI OR automation in healthcare','health data security OR HIPAA OR GDPR','wearable health OR Apple Watch OR remote monitoring'] },
+        { id: 'global', title: '5) 글로벌 이슈',
+          queriesKO: ['공급망 리스크 OR 원자재 OR API 부족','기후 변화 건강 영향 OR 폭염 건강','분쟁 OR 지정학 OR 팬데믹 이후'],
+          queriesEN: ['supply chain risk OR API shortage','climate change health impact OR heat wave health','geopolitics OR conflict OR post‑pandemic'] }
+      ]
+    };
+
+    // ===== UTILS =====
+    const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+    function toKST(d){ return new Date(d.getTime() + (9*60 + d.getTimezoneOffset())*60000); }
+    function toLocalKSTDateString(d){ return toKST(d).toISOString().slice(0,10); }
+    function formatTimeKST(d){ d=toKST(d); const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0'),hh=String(d.getHours()).padStart(2,'0'),mm=String(d.getMinutes()).padStart(2,'0'); return `${y}-${m}-${dy} ${hh}:${mm} KST`; }
+    function getHostname(u){ try{ return new URL(u).hostname.replace(/^www\./,''); }catch{ return ''; } }
+    function sanitize(s){ const el=document.createElement('div'); el.textContent=s||''; return el.innerHTML; }
+    function dedupe(arr){ const seen=new Set(); return arr.filter(it=>{ const key=(getHostname(it.link)+'|'+it.title).toLowerCase(); if(seen.has(key)) return false; seen.add(key); return true; }); }
+
+    // 롤링 윈도우: 전일 15:00 ~ 당일 14:59 (KST)
+    function inRollingWindowKST(pubDate, targetDateStr){
+      if(!(pubDate instanceof Date) || isNaN(pubDate)) return false;
+      const pivot=new Date(`${targetDateStr}T15:00:00+09:00`);
+      if(isNaN(pivot)) return true; // 날짜가 비어있어도 카드가 비게만 처리
+      const start=new Date(pivot.getTime()-24*60*60*1000);
+      const end=new Date(pivot.getTime()-1000);
+      return pubDate>=start && pubDate<=end;
+    }
+
+    function getCache(key){ try{ const v=sessionStorage.getItem(key); if(!v) return null; const {t,data}=JSON.parse(v); if(Date.now()-t<CACHE_TTL_MS) return data; }catch{} return null; }
+    function setCache(key,data){ try{ sessionStorage.setItem(key, JSON.stringify({t:Date.now(),data})); }catch{} }
+    function fetchWithTimeout(url, ms=6000, opts={}){ const ctrl=new AbortController(); const id=setTimeout(()=>ctrl.abort(),ms); return fetch(url,{...opts,signal:ctrl.signal}).finally(()=>clearTimeout(id)); }
+    async function fetchViaProxies(url){
+      const cacheKey=`rss:${url}`; const cached=getCache(cacheKey); if(cached) return cached;
+      const targets=[
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}&nocache=${Date.now()}`,
+        `https://cors.isomorphic-git.org/${url}`,
+        `https://thingproxy.freeboard.io/fetch/${url}`
+      ];
+      let lastErr; for(const t of targets){ try{ const r=await fetchWithTimeout(t,6000); if(!r.ok) throw new Error(`Proxy ${t} -> ${r.status}`); const text=await r.text(); setCache(cacheKey,text); return text; } catch(e){ lastErr=e; } }
+      throw lastErr||new Error('All proxies failed');
+    }
+
+    function googleNewsRSS(q,lang,country){ const base='https://news.google.com/rss/search'; const p=new URLSearchParams({q,hl:lang,gl:country,ceid:`${country}:${lang}`}); return `${base}?${p.toString()}`; }
+    function googleTopStoriesRSS(lang,country){ const base='https://news.google.com/rss'; const p=new URLSearchParams({hl:lang,gl:country,ceid:`${country}:${lang}`}); return `${base}?${p.toString()}`; }
+
+    // ===== 기본 섹션(항상 표시) =====
+    function baseGroups(){
+      return [
+        { id:'gTop', title:'🗞️ Google Top Stories(ko/en)', items:[] },
+        { id:'top',  title:'🔥 Top Stories (글로벌 보정)', items:[] },
+        ...CONFIG.categories.map(c=>({ id:c.id, title:c.title, items:[] })),
+        { id:'officialsKR', title:'🏛️ 국내 공신력 소스(기관 발표)', items:[] },
+        { id:'officials',   title:'🌐 해외 공신력 소스(기관 발표)', items:[] }
+      ];
+    }
+
+    // ===== 렌더 =====
+    function renderSkeleton(){
+      const wrap=document.getElementById('results');
+      wrap.innerHTML='';
+      for(const b of baseGroups()){
+        const sec=document.createElement('section');
+        sec.className='rounded-2xl bg-white border border-gray-200 p-5 shadow-sm';
+        sec.innerHTML=`
+          <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">${sanitize(b.title)}
+            <span class="badge bg-gray-50 text-gray-600">로딩…</span>
+          </h2>
+          <div class="space-y-3">
+            <div class="h-5 rounded skeleton"></div>
+            <div class="h-5 rounded skeleton"></div>
+            <div class="h-5 rounded skeleton"></div>
+          </div>`;
+        wrap.appendChild(sec);
+      }
+    }
+
+    function renderGroup(sectionEl, group, limit){
+      const list=group.items.slice(0,limit);
+      const itemsHTML=list.map(item=>`
+        <a href="${sanitize(item.link)}" target="_blank" rel="noopener" class="block group">
+          <div class="p-3 rounded-xl group-hover:bg-gray-50 transition">
+            <h3 class="font-medium leading-snug">${sanitize(item.title)}</h3>
+            <p class="text-sm text-gray-600 mt-1 line-clamp-2">${sanitize(item.source)} · ${sanitize(formatTimeKST(item.pubDate))} · <span class="uppercase">${sanitize(item.lang||'')}</span></p>
+          </div>
+        </a>`).join('') || '<p class="text-sm text-gray-500">해당 조건에 맞는 기사가 없습니다.</p>';
+      sectionEl.innerHTML=`<h2 class="text-lg font-semibold mb-3">${sanitize(group.title)}</h2><div class="divide-y">${itemsHTML}</div>`;
+    }
+
+    function renderAll(groups, targetDate, totalCount){
+      const wrap=document.getElementById('results');
+      wrap.innerHTML='';
+      for(const g of groups){ const sec=document.createElement('section'); sec.className='rounded-2xl bg-white border border-gray-200 p-5 shadow-sm'; renderGroup(sec,g,CONFIG.maxPerCategory); wrap.appendChild(sec); }
+      document.getElementById('meta').textContent=`${targetDate} 기준(전일 15:00~당일 14:59 KST) 카테고리별 상위 ${CONFIG.maxPerCategory}건 · 총 ${totalCount}건`;
+    }
+
+    // ===== 파싱/수집 =====
+    async function fetchRSS(url, langTag){
+      try{
+        const text=await fetchViaProxies(url);
+        const xml=new DOMParser().parseFromString(text,'text/xml');
+        if(xml.querySelector('parsererror')) return [];
+        let items=[...xml.querySelectorAll('item')].map(it=>({
+          title: it.querySelector('title')?.textContent?.trim()||'',
+          link:  it.querySelector('link')?.textContent?.trim()||'',
+          description: it.querySelector('description')?.textContent||'',
+          pubDateRaw: it.querySelector('pubDate')?.textContent?.trim()||'',
+          source: it.querySelector('source')?.textContent?.trim() || it.querySelector('author')?.textContent?.trim() || '출처 미상',
+          lang: langTag||''
+        }));
+        if(items.length===0){ // Atom fallback
+          items=[...xml.querySelectorAll('entry')].map(e=>({
+            title: e.querySelector('title')?.textContent?.trim()||'',
+            link:  e.querySelector('link[rel="alternate"]')?.getAttribute('href') || e.querySelector('link')?.getAttribute('href') || '',
+            description: e.querySelector('summary')?.textContent||'',
+            pubDateRaw: e.querySelector('updated')?.textContent?.trim() || e.querySelector('published')?.textContent?.trim() || '',
+            source: '공식', lang: langTag||''
+          }));
+        }
+        for(const it of items){ const d=new Date(it.pubDateRaw); it.pubDate=isNaN(d)?new Date(0):d; }
+        return items;
+      }catch{ return []; }
+    }
+
+    async function fetchQueries(queries, lang, country, langTag, keyword){
+      const qs = queries.map(q => keyword ? `${q} ${keyword}` : q);
+      const urls=qs.map(q=>googleNewsRSS(q,lang,country));
+      const settled=await Promise.allSettled(urls.map(u=>fetchRSS(u,langTag)));
+      return settled.flatMap(s=>s.status==='fulfilled'?s.value:[]);
+    }
+
+    async function fetchTopStories(){
+      if(!CONFIG.useTopStories) return [];
+      const feeds=[ googleTopStoriesRSS(CONFIG.languageKO,CONFIG.countryKO), googleTopStoriesRSS(CONFIG.languageEN,CONFIG.countryUS), googleTopStoriesRSS(CONFIG.languageEN,CONFIG.countryGB) ];
+      const settled=await Promise.allSettled(feeds.map(f=>fetchRSS(f,'top')));
+      return settled.flatMap(s=>s.status==='fulfilled'?s.value:[]);
+    }
+
+    async function fetchOfficialsGlobal(){
+      if(!CONFIG.useOfficials) return [];
+      const settled=await Promise.allSettled(CONFIG.officialFeedsGlobal.map(feed=>fetchRSS(feed.url,'official').then(items=>{ items.forEach(it=>it.source=feed.name); return items; })));
+      return settled.flatMap(s=>s.status==='fulfilled'?s.value:[]);
+    }
+    async function fetchOfficialsKR(){
+      const settled=await Promise.allSettled(CONFIG.officialFeedsKR.map(feed=>fetchRSS(feed.url,'gov').then(items=>{ items.forEach(it=>it.source=feed.name); return items; })));
+      return settled.flatMap(s=>s.status==='fulfilled'?s.value:[]);
+    }
+
+    function filterAndSort(items, targetDateStr, keyword){
+      let filtered=items.filter(it=>inRollingWindowKST(it.pubDate,targetDateStr));
+      if(keyword){
+        const tokens=keyword.split(/[ ,|]+/).map(s=>s.toLowerCase()).filter(Boolean);
+        filtered=filtered.filter(it=>{ const text=((it.title||'')+' '+(it.description||'')).toLowerCase(); return tokens.some(t=>text.includes(t)); });
+      }
+      const titleCount=new Map(); for(const it of filtered){ const k=it.title.toLowerCase(); titleCount.set(k,(titleCount.get(k)||0)+1); }
+      return filtered.sort((a,b)=>{ const cov=(titleCount.get(b.title.toLowerCase())||1)-(titleCount.get(a.title.toLowerCase())||1); if(cov!==0) return cov; return b.pubDate-a.pubDate; });
+    }
+
+    // ===== 실행 =====
+    async function run(targetDateStr){
+      // 1) 빈 카드라도 먼저 그림
+      renderSkeleton();
+      // 2) 항상 기본 섹션을 만들어두고(항상 보이게), 데이터만 주입
+      const groups=baseGroups();
+      const byId=new Map(groups.map(g=>[g.id,g]));
+
+      const keyword=document.getElementById('keywordInput')?.value?.trim();
+      const includeBusiness=document.getElementById('toggleBusiness')?.checked;
+      const includeGov=document.getElementById('toggleGov')?.checked;
+      const applyKeywordTop=document.getElementById('applyKeywordTop')?.checked;
+      const applyKeywordGov=document.getElementById('applyKeywordGov')?.checked;
+
+      let total=0;
+      try{
+        if(includeBusiness){
+          const tops=await fetchTopStories();
+          const topsFiltered=filterAndSort(dedupe(tops),targetDateStr, applyKeywordTop?keyword:null).slice(0,CONFIG.maxPerCategory);
+          byId.get('gTop').items=topsFiltered; total+=topsFiltered.length;
+        }
+        if(includeBusiness){
+          const [hotUS,hotGB]=await Promise.all([
+            fetchQueries(CONFIG.globalQueries, CONFIG.languageEN, CONFIG.countryUS, 'en', keyword),
+            fetchQueries(CONFIG.globalQueries, CONFIG.languageEN, CONFIG.countryGB, 'en', keyword)
+          ]);
+          const hotFiltered=filterAndSort(dedupe([...hotUS,...hotGB]),targetDateStr, keyword);
+          byId.get('top').items=hotFiltered; total+=Math.min(hotFiltered.length,CONFIG.maxPerCategory);
+        }
+        if(includeBusiness){
+          const settled=await Promise.allSettled(CONFIG.categories.map(async cat=>{
+            const [ko,enUS,enGB]=await Promise.all([
+              fetchQueries(cat.queriesKO, CONFIG.languageKO, CONFIG.countryKO, 'ko', keyword),
+              fetchQueries(cat.queriesEN, CONFIG.languageEN, CONFIG.countryUS, 'en', keyword),
+              fetchQueries(cat.queriesEN, CONFIG.languageEN, CONFIG.countryGB, 'en', keyword)
+            ]);
+            const merged=dedupe([...ko,...enUS,...enGB]);
+            byId.get(cat.id).items=filterAndSort(merged,targetDateStr, keyword);
+          }));
+          // settled 결과는 실패해도 무시(빈 카드 유지)
+        }
+        if(includeGov){
+          const offKR=await fetchOfficialsKR();
+          const fKR=filterAndSort(dedupe(offKR),targetDateStr, applyKeywordGov?keyword:null);
+          byId.get('officialsKR').items=fKR; total+=Math.min(fKR.length,CONFIG.maxPerCategory);
+        }
+        if(includeGov){
+          const offG=await fetchOfficialsGlobal();
+          const fG=filterAndSort(dedupe(offG),targetDateStr, applyKeywordGov?keyword:null);
+          byId.get('officials').items=fG; total+=Math.min(fG.length,CONFIG.maxPerCategory);
+        }
+      }catch(e){ console.error(e); }
+
+      renderAll(groups, targetDateStr, total);
+    }
+
+    function toMarkdownFromDOM(targetDateStr){
+      const sections=[...document.querySelectorAll('#results > section')];
+      const lines=[`# 데일리 뉴스 브리핑 (${targetDateStr})
+`];
+      for(const sec of sections){ const title=sec.querySelector('h2')?.textContent?.trim()||''; lines.push(`## ${title}`); const links=[...sec.querySelectorAll('a')]; if(!links.length){ lines.push('- (해당 조건 기사 없음)
+'); continue; } for(const a of links){ const h3=a.querySelector('h3')?.textContent?.trim()||a.href; const meta=a.querySelector('p')?.textContent?.trim()||''; lines.push(`- [${h3}](${a.href}) — ${meta}`);} lines.push(''); }
+      return lines.join('
+');
+    }
+
+    // ===== 부트스트랩(항상 실행) =====
+    const dateInput=document.getElementById('dateInput');
+    const fetchBtn=document.getElementById('fetchBtn');
+    const exportBtn=document.getElementById('exportBtn');
+
+    function ensureDate(){ if(!dateInput.value){ dateInput.value=toLocalKSTDateString(new Date()); } }
+    function boot(){ ensureDate(); renderSkeleton(); run(dateInput.value); }
+
+    if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', boot); } else { boot(); }
+
+    fetchBtn.addEventListener('click', ()=>{ ensureDate(); run(dateInput.value); });
+    exportBtn.addEventListener('click', ()=>{ const md=toMarkdownFromDOM(dateInput.value); const blob=new Blob([md],{type:'text/markdown;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`뉴스브리핑_${dateInput.value}.md`; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); });
+  </script>
+</body>
+</html>
