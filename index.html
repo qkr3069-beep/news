@@ -313,7 +313,8 @@
       renderAll(groups, targetDateStr, total);
     }
 
-    function toMarkdownFromDOM(targetDateStr){
+<script>
+function toMarkdownFromDOM(targetDateStr){
   const sections=[...document.querySelectorAll('#results > section')];
   const lines=[`# 데일리 뉴스 브리핑 (${targetDateStr})\n`];
 
@@ -321,6 +322,7 @@
     const title = sec.querySelector('h2')?.textContent?.trim() || '';
     lines.push(`## ${title}`);
     const links = [...sec.querySelectorAll('a')];
+
     if (!links.length){
       lines.push('- (해당 조건 기사 없음)\n');
       continue;
@@ -334,7 +336,7 @@
   }
   return lines.join('\n');
 }
-    }
+</script>
 
     // ===== 부트스트랩(항상 실행) =====
     const dateInput=document.getElementById('dateInput');
