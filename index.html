@@ -314,13 +314,26 @@
     }
 
     function toMarkdownFromDOM(targetDateStr){
-      const sections=[...document.querySelectorAll('#results > section')];
-      const lines=[`# 데일리 뉴스 브리핑 (${targetDateStr})
-`];
-      for(const sec of sections){ const title=sec.querySelector('h2')?.textContent?.trim()||''; lines.push(`## ${title}`); const links=[...sec.querySelectorAll('a')]; if(!links.length){ lines.push('- (해당 조건 기사 없음)
-'); continue; } for(const a of links){ const h3=a.querySelector('h3')?.textContent?.trim()||a.href; const meta=a.querySelector('p')?.textContent?.trim()||''; lines.push(`- [${h3}](${a.href}) — ${meta}`);} lines.push(''); }
-      return lines.join('
-');
+  const sections=[...document.querySelectorAll('#results > section')];
+  const lines=[`# 데일리 뉴스 브리핑 (${targetDateStr})\n`];
+
+  for (const sec of sections){
+    const title = sec.querySelector('h2')?.textContent?.trim() || '';
+    lines.push(`## ${title}`);
+    const links = [...sec.querySelectorAll('a')];
+    if (!links.length){
+      lines.push('- (해당 조건 기사 없음)\n');
+      continue;
+    }
+    for (const a of links){
+      const h3 = a.querySelector('h3')?.textContent?.trim() || a.href;
+      const meta = a.querySelector('p')?.textContent?.trim() || '';
+      lines.push(`- [${h3}](${a.href}) — ${meta}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
     }
 
     // ===== 부트스트랩(항상 실행) =====
